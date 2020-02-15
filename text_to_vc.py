@@ -50,10 +50,11 @@ message = ""
 index = 0
 enter_pressed = False
 shift_pressed = False
-files = os.listdir("./Soundboard")
+options = ["!tts"]
+options += os.listdir("./Soundboard")
 matches = []
 matchIndex = -1
-print(files)
+tts_enabled = False
 app = App()
 
 to_shift = {"&": 1, "é": 2, "\"": 3, "'": 4, "(": 5, "§": 6, "è": 7, "!": 8, "ç": 9, "à": 0, "-": "_",
@@ -80,25 +81,31 @@ def on_press(key):
     global app
     global matches
     global matchIndex
+    global tts_enabled
+    global options
     if key == Key.enter:
         if enter_pressed:
             matchIndex = -1
             try:
-                file = "message.mp3"
-                if message[-4:] == ".mp3":
+                file = ""
+                if message[0] == '!':
+                    if message[1:].lower() == "tts":
+                        tts_enabled = not tts_enabled
+                elif message[-4:] == ".mp3":
                     file = "Soundboard/{0}".format(message)
                 else:
-                    file = "dummy"
-                # else:
-                #     message = re.sub("([a-zA-Z]{2,3})[cC][cC] ", r'\1ck', message)
-                #     message = re.sub("([a-zA-Z]{2,3})[cC][cC]$", r'\1ck', message)
-                #     message.replace("wtf", "what the fuck")
-                #     print(message)
-                #     t2s = gTTS(text=message, lang='en-US')
-                #     t2s.save("message.mp3")
-                sr, array = read(file, True)
-                sd.default.device = 4
-                sd.play(array, sr)
+                    if tts_enabled:
+                        file = "message.mp3"
+                        message = re.sub("([a-zA-Z]{2,3})[cC][cC] ", r'\1ck', message)
+                        message = re.sub("([a-zA-Z]{2,3})[cC][cC]$", r'\1ck', message)
+                        message.replace("wtf", "what the fuck")
+                        print(message)
+                        t2s = gTTS(text=message, lang='en-US')
+                        t2s.save("message.mp3")
+                if file != "":
+                    sr, array = read(file, True)
+                    sd.default.device = 4
+                    sd.play(array, sr)
             except AssertionError:
                 print()
             except FileNotFoundError:
@@ -122,7 +129,7 @@ def on_press(key):
         message += ' '
     elif key == Key.tab and enter_pressed:
         if matchIndex == -1:
-            matches = list(filter(lambda x: re.match(message, x, re.IGNORECASE), files))
+            matches = list(filter(lambda x: re.match(message, x, re.IGNORECASE), options))
         if len(matches) > 0:
             matchIndex = (matchIndex + 1) % len(matches)
             message = matches[matchIndex]
