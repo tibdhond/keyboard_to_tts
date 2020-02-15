@@ -29,6 +29,12 @@ class App:
 
         self.root.wm_attributes("-topmost", True)
 
+    def recording(self):
+        self.frame.config(background='red')
+
+    def not_recording(self):
+        self.frame.config(background='white')
+
     def message(self):
         self.root.wm_attributes("-topmost", True)
         self.bMessage.delete(0, END)
@@ -89,10 +95,13 @@ def on_press(key):
             except FileNotFoundError:
                 print()
             message = ""
+            app.not_recording()
             enter_pressed = False
         else:
+            app.recording()
             enter_pressed = True
     elif key == Key.esc:
+        app.not_recording()
         enter_pressed = False
     elif key == Key.backspace and enter_pressed:
         message = message[:-1]
