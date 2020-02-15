@@ -8,13 +8,18 @@ import re
 import threading as t
 import os
 
+
 class App:
     def __init__(self):
+        self.x = 1275
+        self.y = 975
+        self.prev_mouse_x = 0
+        self.prev_mouse_y = 0
         self.root = Tk()
-        self.root.overrideredirect(1)
+        # self.root.overrideredirect(1)
 
         self.frame = Frame(self.root, width=300, height=30,
-                           borderwidth=2, relief=RAISED)
+                           borderwidth=4, relief=RAISED)
 
         self.frame.pack_propagate(False)
         self.frame.pack()
@@ -24,12 +29,23 @@ class App:
         self.bMessage.pack(pady=0)
 
         self.root.overrideredirect(True)
-        self.root.geometry("+1275+975")
+        self.root.geometry("+%d+%d" % (self.x, self.y))
         self.root.lift()
         self.root.wm_attributes("-transparentcolor", "white")
         self.root.attributes("-alpha", 1)
 
+        self.root.bind("<Button-1>", self.click)
+        self.root.bind("<B1-Motion>", self.drag)
         self.root.wm_attributes("-topmost", True)
+
+    def click(self, event):
+        self.prev_mouse_x = event.x
+        self.prev_mouse_y = event.y
+
+    def drag(self, event):
+        self.x -= self.prev_mouse_x - event.x
+        self.y -= self.prev_mouse_y - event.y
+        self.root.geometry("+%d+%d" % (self.x, self.y))
 
     def recording(self):
         self.frame.config(background='red')
@@ -41,9 +57,6 @@ class App:
         self.root.wm_attributes("-topmost", True)
         self.bMessage.delete(0, END)
         self.bMessage.insert(0, message[-26:])
-
-    def quit(self):
-        exit(0)
 
 
 message = ""
@@ -88,7 +101,7 @@ def on_press(key):
             matchIndex = -1
             try:
                 file = ""
-                if message[0] == '!':
+                if len(message) > 0 and message[0] == '!':
                     if message[1:].lower() == "tts":
                         tts_enabled = not tts_enabled
                 elif message[-4:] == ".mp3":
@@ -110,6 +123,7 @@ def on_press(key):
                 print()
             except FileNotFoundError:
                 print()
+
             message = ""
             app.not_recording()
             enter_pressed = False
