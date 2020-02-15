@@ -123,8 +123,9 @@ def on_press(key):
     elif key == Key.tab and enter_pressed:
         if matchIndex == -1:
             matches = list(filter(lambda x: re.match(message, x, re.IGNORECASE), files))
-        matchIndex = (matchIndex + 1) % len(matches)
-        message = matches[matchIndex]
+        if len(matches) > 0:
+            matchIndex = (matchIndex + 1) % len(matches)
+            message = matches[matchIndex]
     elif enter_pressed:
         matchIndex = -1
         key = str(key)
@@ -144,7 +145,6 @@ def on_press(key):
 
 
 def loop():
-    print("key capture")
     with Listener(
             on_press=on_press) as listener:
         listener.join()
