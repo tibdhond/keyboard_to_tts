@@ -11,6 +11,7 @@ import os
 
 class App:
     def __init__(self):
+        self.locked = True
         self.x = 1275
         self.y = 975
         self.prev_mouse_x = 0
@@ -43,9 +44,10 @@ class App:
         self.prev_mouse_y = event.y
 
     def drag(self, event):
-        self.x -= self.prev_mouse_x - event.x
-        self.y -= self.prev_mouse_y - event.y
-        self.root.geometry("+%d+%d" % (self.x, self.y))
+        if not self.locked:
+            self.x -= self.prev_mouse_x - event.x
+            self.y -= self.prev_mouse_y - event.y
+            self.root.geometry("+%d+%d" % (self.x, self.y))
 
     def recording(self):
         self.frame.config(background='red')
@@ -58,12 +60,15 @@ class App:
         self.bMessage.delete(0, END)
         self.bMessage.insert(0, message[-26:])
 
+    def lock(self, state):
+        self.locked = state
+
 
 message = ""
 index = 0
 enter_pressed = False
 shift_pressed = False
-options = ["!tts"]
+options = ["!tts", "!lock", "!unlock"]
 options += os.listdir("./Soundboard")
 matches = []
 matchIndex = -1
@@ -102,8 +107,13 @@ def on_press(key):
             try:
                 file = ""
                 if len(message) > 0 and message[0] == '!':
-                    if message[1:].lower() == "tts":
+                    c = message[1:].lower()
+                    if c == "tts":
                         tts_enabled = not tts_enabled
+                    elif c == "lock":
+                        app.lock(True)
+                    elif c == "unlock":
+                        app.lock(False)
                 elif message[-4:] == ".mp3":
                     file = "Soundboard/{0}".format(message)
                 else:
