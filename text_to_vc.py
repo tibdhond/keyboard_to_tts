@@ -1,6 +1,4 @@
 from tkinter import *
-
-
 from gtts import gTTS
 import sounddevice as sd
 import pydub
@@ -8,19 +6,23 @@ import numpy as np
 from pynput.keyboard import Key, Listener
 import re
 import threading as t
-
+import os
 
 class App:
     def __init__(self):
         self.root = Tk()
         self.root.overrideredirect(1)
+
         self.frame = Frame(self.root, width=300, height=30,
                            borderwidth=2, relief=RAISED)
+
         self.frame.pack_propagate(False)
         self.frame.pack()
-        self.bMessage = Entry(self.frame, width=300)
+
+        self.bMessage = Entry(self.frame, width=300, background="white")
         self.bMessage.config(font=("Courier", 14, 'bold'))
         self.bMessage.pack(pady=0)
+
         self.root.overrideredirect(True)
         self.root.geometry("+1275+975")
         self.root.lift()
@@ -48,6 +50,10 @@ message = ""
 index = 0
 enter_pressed = False
 shift_pressed = False
+files = os.listdir("./Soundboard")
+matches = []
+matchIndex = -1
+print(files)
 app = App()
 
 to_shift = {"&": 1, "é": 2, "\"": 3, "'": 4, "(": 5, "§": 6, "è": 7, "!": 8, "ç": 9, "à": 0, "-": "_",
@@ -72,8 +78,11 @@ def on_press(key):
     global shift_pressed
     global index
     global app
+    global matches
+    global matchIndex
     if key == Key.enter:
         if enter_pressed:
+            matchIndex = -1
             try:
                 file = "message.mp3"
                 if message[-4:] == ".mp3":
@@ -104,12 +113,20 @@ def on_press(key):
         app.not_recording()
         enter_pressed = False
     elif key == Key.backspace and enter_pressed:
+        matchIndex = -1
         message = message[:-1]
     elif key == Key.shift and enter_pressed:
         shift_pressed = True
     elif key == Key.space and enter_pressed:
+        matchIndex = -1
         message += ' '
+    elif key == Key.tab and enter_pressed:
+        if matchIndex == -1:
+            matches = list(filter(lambda x: re.match(message, x, re.IGNORECASE), files))
+        matchIndex = (matchIndex + 1) % len(matches)
+        message = matches[matchIndex]
     elif enter_pressed:
+        matchIndex = -1
         key = str(key)
         if key.count('"') > 1:
             key = key.replace('"', '')
