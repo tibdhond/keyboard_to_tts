@@ -17,7 +17,6 @@ class App:
         self.prev_mouse_x = 0
         self.prev_mouse_y = 0
         self.root = Tk()
-        # self.root.overrideredirect(1)
 
         self.frame = Frame(self.root, width=300, height=30,
                            borderwidth=4, relief=RAISED)
@@ -25,14 +24,14 @@ class App:
         self.frame.pack_propagate(False)
         self.frame.pack()
 
-        self.bMessage = Entry(self.frame, width=300, background="white")
+        self.bMessage = Entry(self.frame, width=300, background="brown", fg="black")
         self.bMessage.config(font=("Courier", 14, 'bold'))
         self.bMessage.pack(pady=0)
 
         self.root.overrideredirect(True)
         self.root.geometry("+%d+%d" % (self.x, self.y))
         self.root.lift()
-        self.root.wm_attributes("-transparentcolor", "white")
+        self.root.wm_attributes("-transparentcolor", "brown")
         self.root.attributes("-alpha", 1)
 
         self.root.bind("<Button-1>", self.click)
@@ -63,12 +62,18 @@ class App:
     def lock(self, state):
         self.locked = state
 
+    def color(self, n_color):
+        try:
+            self.bMessage.config(fg=n_color)
+        except TclError:
+            print()
+
 
 message = ""
 index = 0
 enter_pressed = False
 shift_pressed = False
-options = ["!tts", "!lock", "!unlock"]
+options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red"]
 options += os.listdir("./Soundboard")
 matches = []
 matchIndex = -1
@@ -114,6 +119,8 @@ def on_press(key):
                         app.lock(True)
                     elif c == "unlock":
                         app.lock(False)
+                    else:
+                        app.color(c)
                 elif message[-4:] == ".mp3":
                     file = "Soundboard/{0}".format(message)
                 else:
