@@ -87,6 +87,8 @@ shift_pressed = False
 options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit", "!stop"]
 options += os.listdir("./Soundboard")
 matches = []
+history = []
+history_index = 0
 matchIndex = -1
 tts_enabled = False
 app = App()
@@ -117,9 +119,10 @@ def on_press(key):
     global matchIndex
     global tts_enabled
     global options
+    global history_index
+    global history
     if key == Key.enter:
         if enter_pressed:
-            matchIndex = -1
             try:
                 file = ""
                 if len(message) > 0 and message[0] == '!':  # Indicates command
@@ -158,6 +161,15 @@ def on_press(key):
                 print()
 
             index = 0
+            matchIndex = -1
+            if history_index != len(history):
+                history.pop()
+            if message != "" and (len(history) == 0 or history[-1] != message):
+                history.append(message)
+            if len(history) > 20:   # History size
+                history.pop(0)
+            history_index = len(history)
+            print(history)
             message = ""
             app.not_recording()
             enter_pressed = False
@@ -190,6 +202,22 @@ def on_press(key):
             index = max(index-1, 0)
         elif key == Key.right:
             index = min(index+1, len(message))
+        elif key == Key.up and history_index > 0:
+            print(history_index)
+            if message != "":
+                history.insert(history_index, message)
+            history_index = max(0, history_index-1)
+            message = history.pop(history_index)
+            print(history)
+        elif key == Key.down:
+            if message != "":
+                history.insert(history_index, message)
+            history_index = min(history_index+1, len(history))
+            if history_index < len(history):
+                message = history.pop(history_index)
+            else:
+                message = ""
+            print(history)
         else:
             if key == Key.space:
                 matchIndex = -1
