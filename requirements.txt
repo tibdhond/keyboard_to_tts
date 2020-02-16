@@ -1,0 +1,10 @@
+gtts
+sounddevice
+pydub
+numpy
+pynput
+tkinter
+re
+threading
+os
+sys
