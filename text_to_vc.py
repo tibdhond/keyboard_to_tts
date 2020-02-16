@@ -13,8 +13,8 @@ import sys
 class App:
     def __init__(self):
         self.locked = True
-        self.x = 1275
-        self.y = 975
+        self.x = 0
+        self.y = 0
         self.prev_mouse_x = 0
         self.prev_mouse_y = 0
         self.root = Tk()
