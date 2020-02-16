@@ -84,7 +84,7 @@ message = ""
 index = 0
 enter_pressed = False
 shift_pressed = False
-options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit"]
+options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit", "!stop"]
 options += os.listdir("./Soundboard")
 matches = []
 matchIndex = -1
@@ -122,7 +122,7 @@ def on_press(key):
             matchIndex = -1
             try:
                 file = ""
-                if len(message) > 0 and message[0] == '!':
+                if len(message) > 0 and message[0] == '!':  # Indicates command
                     c = message[1:].lower()
                     if c == "tts":
                         tts_enabled = not tts_enabled
@@ -130,6 +130,8 @@ def on_press(key):
                         app.lock(True)
                     elif c == "unlock":
                         app.lock(False)
+                    elif c == "stop":
+                        sd.stop()
                     elif c == "quit" or c == "exit":
                         app.quit()
                         sys.exit()
