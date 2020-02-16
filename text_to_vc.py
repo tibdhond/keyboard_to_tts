@@ -12,10 +12,11 @@ import os
 class App:
     def __init__(self):
         self.locked = True
-        self.x = 1275
-        self.y = 975
+        self.x = 0      
+        self.y = 0
         self.prev_mouse_x = 0
         self.prev_mouse_y = 0
+
         self.root = Tk()
 
         self.frame = Frame(self.root, width=300, height=30,
@@ -55,9 +56,15 @@ class App:
         self.frame.config(background='white')
 
     def message(self):
+        self.bMessage.focus_set()
         self.root.wm_attributes("-topmost", True)
         self.bMessage.delete(0, END)
         self.bMessage.insert(0, message[-26:])
+
+    def cursor(self):
+        global index
+        self.bMessage.focus_set()
+        self.bMessage.icursor(index)
 
     def lock(self, state):
         self.locked = state
@@ -141,6 +148,7 @@ def on_press(key):
             except FileNotFoundError:
                 print()
 
+            index = 0
             message = ""
             app.not_recording()
             enter_pressed = False
@@ -150,36 +158,46 @@ def on_press(key):
     elif key == Key.esc:
         app.not_recording()
         enter_pressed = False
-    elif key == Key.backspace and enter_pressed:
-        matchIndex = -1
-        message = message[:-1]
-    elif key == Key.shift and enter_pressed:
-        shift_pressed = True
-    elif key == Key.space and enter_pressed:
-        matchIndex = -1
-        message += ' '
-    elif key == Key.tab and enter_pressed:
-        if matchIndex == -1:
-            matches = list(filter(lambda x: re.match(message, x, re.IGNORECASE), options))
-        if len(matches) > 0:
-            matchIndex = (matchIndex + 1) % len(matches)
-            message = matches[matchIndex]
     elif enter_pressed:
-        matchIndex = -1
-        key = str(key)
-        if key.count('"') > 1:
-            key = key.replace('"', '')
-        elif key.count("'") > 1:
-            key = key.replace("'", "")
-        if len(key) == 1:
-            if shift_pressed:
-                key = str(to_shift.get(key, key.upper()))
-                shift_pressed = False
-            # print(key, shift_pressed)
-            message += key
-            index = min(26, index + 1)
+        if key == Key.backspace:
+            matchIndex = -1
+            if index > 0:
+                message = message[:index-1] + message[index:]
+                index -= 1
+        elif key == Key.shift:
+            shift_pressed = True
+        elif key == Key.tab:
+            if matchIndex == -1:
+                matches = list(filter(lambda x: re.match(message[:index], x, re.IGNORECASE), options))
+            if len(matches) > 0:
+                matchIndex = (matchIndex + 1) % len(matches)
+                message = matches[matchIndex]
+                index = len(message)
+        elif key == Key.left:
+            index = max(index-1, 0)
+        elif key == Key.right:
+            index = min(index+1, len(message))
+        else:
+            if key == Key.space:
+                matchIndex = -1
+                message += ' '
+                index += 1
+            else:
+                matchIndex = -1
+                key = str(key)
+                if key.count('"') > 1:
+                    key = key.replace('"', '')
+                elif key.count("'") > 1:
+                    key = key.replace("'", "")
+                if len(key) == 1:
+                    if shift_pressed:
+                        key = str(to_shift.get(key, key.upper()))
+                        shift_pressed = False
+                    message = message[:index] + key + message[index:]
+                    index = index + 1
 
     app.message()
+    app.cursor()
 
 
 def loop():
@@ -188,7 +206,7 @@ def loop():
         listener.join()
 
 
-y = t.Thread(target=loop)
-y.start()
+capture = t.Thread(target=loop)
+capture.start()
 app.root.mainloop()
 print("check")
