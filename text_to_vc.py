@@ -171,6 +171,10 @@ def on_press(key):
             if index > 0:
                 message = message[:index-1] + message[index:]
                 index -= 1
+        elif key == Key.delete:
+            matchIndex = -1
+            if index < len(message):
+                message = message[:index] + message[index+1:]
         elif key == Key.shift:
             shift_pressed = True
         elif key == Key.tab:
