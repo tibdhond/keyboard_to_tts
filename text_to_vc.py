@@ -7,12 +7,13 @@ from pynput.keyboard import Key, Listener
 import re
 import threading as t
 import os
+import sys
 
 
 class App:
     def __init__(self):
         self.locked = True
-        self.x = 0      
+        self.x = 0
         self.y = 0
         self.prev_mouse_x = 0
         self.prev_mouse_y = 0
@@ -75,12 +76,15 @@ class App:
         except TclError:
             print()
 
+    def quit(self):
+        self.root.destroy()
+
 
 message = ""
 index = 0
 enter_pressed = False
 shift_pressed = False
-options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red"]
+options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit"]
 options += os.listdir("./Soundboard")
 matches = []
 matchIndex = -1
@@ -126,6 +130,9 @@ def on_press(key):
                         app.lock(True)
                     elif c == "unlock":
                         app.lock(False)
+                    elif c == "quit" or c == "exit":
+                        app.quit()
+                        sys.exit()
                     else:
                         app.color(c)
                 elif message[-4:] == ".mp3":
@@ -207,6 +214,7 @@ def loop():
 
 
 capture = t.Thread(target=loop)
+capture.daemon = True
 capture.start()
 app.root.mainloop()
-print("check")
+sys.exit()
