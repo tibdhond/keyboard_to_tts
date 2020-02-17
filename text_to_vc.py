@@ -148,7 +148,6 @@ def on_press(key):
                         message = re.sub("([a-zA-Z]{2,3})[cC][cC] ", r'\1ck', message)
                         message = re.sub("([a-zA-Z]{2,3})[cC][cC]$", r'\1ck', message)
                         message.replace("wtf", "what the fuck")
-                        print(message)
                         t2s = gTTS(text=message, lang='en-US')
                         t2s.save("message.mp3")
                 if file != "":
@@ -169,7 +168,6 @@ def on_press(key):
             if len(history) > 20:   # History size
                 history.pop(0)
             history_index = len(history)
-            print(history)
             message = ""
             app.not_recording()
             enter_pressed = False
@@ -193,7 +191,7 @@ def on_press(key):
             shift_pressed = True
         elif key == Key.tab:
             if matchIndex == -1:
-                matches = list(filter(lambda x: re.match(message[:index], x, re.IGNORECASE), options))
+                matches = list(filter(lambda x: re.match(message[:index], re.escape(x), re.IGNORECASE), options))
             if len(matches) > 0:
                 matchIndex = (matchIndex + 1) % len(matches)
                 message = matches[matchIndex]
@@ -203,12 +201,10 @@ def on_press(key):
         elif key == Key.right:
             index = min(index+1, len(message))
         elif key == Key.up and history_index > 0:
-            print(history_index)
             if message != "":
                 history.insert(history_index, message)
             history_index = max(0, history_index-1)
             message = history.pop(history_index)
-            print(history)
         elif key == Key.down:
             if message != "":
                 history.insert(history_index, message)
@@ -217,7 +213,6 @@ def on_press(key):
                 message = history.pop(history_index)
             else:
                 message = ""
-            print(history)
         else:
             if key == Key.space:
                 matchIndex = -1
