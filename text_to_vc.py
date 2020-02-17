@@ -85,6 +85,7 @@ index = 0
 enter_pressed = False
 shift_pressed = False
 options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit", "!stop"]
+# options = [re.escape(x) for x in options]
 options += os.listdir("./Soundboard")
 matches = []
 history = []
@@ -191,7 +192,7 @@ def on_press(key):
             shift_pressed = True
         elif key == Key.tab:
             if matchIndex == -1:
-                matches = list(filter(lambda x: re.match(message[:index], re.escape(x), re.IGNORECASE), options))
+                matches = list(filter(lambda x: re.match(re.escape(message[:index]), x, re.IGNORECASE), options))
             if len(matches) > 0:
                 matchIndex = (matchIndex + 1) % len(matches)
                 message = matches[matchIndex]
