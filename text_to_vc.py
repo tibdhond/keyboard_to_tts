@@ -94,16 +94,18 @@ def read(f, normalized=False):
 class Dispatch:
     def __init__(self):
         self.message = ""
-        self.index = 0
-        self.enter_pressed = False
+        self.index = 0                  # Location of cursor
+        self.enter_pressed = False      # Keep track of whether the program is recording
         self.shift_pressed = False
-        self.options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit",
+        self.options = ["!tts", "!lock", "!unlock", "!white", "!b"
+                                                              "lack", "!yellow", "!blue", "!red", "!quit", "!exit",
                         "!stop"]
         self.options += os.listdir("./Soundboard")
-        self.matches = []
-        self.history = []
-        self.history_index = 0
+        self.matches = []       # autocomplete matches
         self.matchIndex = -1
+        self.history = []       # Keep track of previous entries
+        self.history_index = 0  # Index in history
+        self.temp = False       # Keeps track of whether a temp entry is added to history
         self.tts_enabled = False
         self.app = App()
 
@@ -162,6 +164,7 @@ class Dispatch:
 
             self.index = 0
             self.matchIndex = -1
+            print(self.history, self.history_index)
             if self.history_index != len(self.history):
                 self.history.pop()
             if self.message != "" and (len(self.history) == 0 or self.history[-1] != self.message):
@@ -169,6 +172,7 @@ class Dispatch:
             if len(self.history) > 20:  # History size
                 self.history.pop(0)
             self.history_index = len(self.history)
+            print(self.history, self.history_index)
             self.message = ""
             self.app.not_recording()
             self.enter_pressed = False
@@ -195,6 +199,10 @@ class Dispatch:
         self.shift_pressed = True
 
     def on_tab(self, key):
+        if self.temp:
+            self.history.pop()
+            self.temp = False
+            self.history_index = len(self.history)
         if self.matchIndex == -1:
             self.matches = list(filter(lambda x: re.match(re.escape(self.message[:self.index]),
                                                           x, re.IGNORECASE), self.options))
@@ -215,8 +223,13 @@ class Dispatch:
                 self.history.insert(self.history_index, self.message)
             self.history_index = max(0, self.history_index - 1)
             self.message = self.history.pop(self.history_index)
+        if self.history_index <= len(self.history) and self.temp:
+            self.temp = False
+        print(self.history, self.history_index, self.temp)
 
     def on_down(self, key):
+        if self.temp and self.history_index == len(self.history):
+            self.history.pop()
         if self.message != "":
             self.history.insert(self.history_index, self.message)
         self.history_index = min(self.history_index + 1, len(self.history))
@@ -224,6 +237,9 @@ class Dispatch:
             self.message = self.history.pop(self.history_index)
         else:
             self.message = ""
+            self.temp = True
+
+        print(self.history, self.history_index, self.temp)
 
     def on_space(self, key):
         self.matchIndex = -1
@@ -231,6 +247,10 @@ class Dispatch:
         self.index += 1
 
     def on_non_special(self, key):
+        if self.temp:
+            self.history.pop()
+            self.temp = False
+            self.history_index = len(self.history)
         self.matchIndex = -1
         key = str(key)
         if key.count('"') > 1:
