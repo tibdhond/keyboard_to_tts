@@ -9,6 +9,7 @@ import threading as t
 import os
 import sys
 import json
+import time
 
 
 class App:
@@ -104,7 +105,7 @@ class Dispatch:
         self.index = 0                  # Location of cursor
         self.enter_pressed = False      # Keep track of whether the program is recording
         self.shift_pressed = False
-        self.options = ["!tts", "!lock", "!unlock", "!color ", "!quit", "!exit",
+        self.options = ["!tts", "!lock", "!unlock", "!color ", "!quit", "!exit", "!sound_device",
                         "!stop"]
         self.options += os.listdir("./Soundboard")
         self.matches = []       # autocomplete matches
@@ -116,6 +117,9 @@ class Dispatch:
         self.app = App(config)
 
         self.sound_device = config["sound_device"]
+        if self.sound_device == -1:
+            self.detect_sd()
+
         sd.default.device = self.sound_device
 
         self.to_shift = {"&": 1, "é": 2, "\"": 3, "'": 4, "(": 5, "§": 6, "è": 7, "!": 8, "ç": 9, "à": 0, "-": "_",
@@ -126,6 +130,24 @@ class Dispatch:
                                 Key.shift: self.on_shift, Key.tab: self.on_tab, Key.left: self.on_left,
                                 Key.right: self.on_right, Key.up: self.on_up, Key.down: self.on_down,
                                 Key.space: self.on_space}
+
+    def detect_sd(self):
+        i = 0
+        devices = sd.query_devices()
+        while i < len(devices) and devices[i]['name'] != "CABLE Input (VB-Audio Virtual C":
+            i += 1
+        if i == len(devices):
+            self.app.font_color = 'red'
+            self.message = "SD could not be determined"
+            self.index = len(self.message)
+            self.app.message(self.message)
+            self.app.cursor(self.index)
+            print(self.message)
+            return True
+        else:
+            self.sound_device = i
+            sd.default.device = i
+            return False
 
     def on_press(self, key):
         self.top_dispatch.get(key, self.on_any)(key)
@@ -151,6 +173,9 @@ class Dispatch:
                         self.write_settings()
                         self.app.quit()
                         sys.exit()
+                    elif c == "sound_device":
+                        if self.detect_sd():
+                            return
                     elif re.match("color .*", c):
                         self.app.color(c[6:])
                 elif self.message[-4:] == ".mp3":
@@ -173,7 +198,6 @@ class Dispatch:
 
             self.index = 0
             self.matchIndex = -1
-            print(self.history, self.history_index)
             if self.history_index != len(self.history):
                 self.history.pop()
             if self.message != "" and (len(self.history) == 0 or self.history[-1] != self.message):
@@ -181,7 +205,6 @@ class Dispatch:
             if len(self.history) > 20:  # History size
                 self.history.pop(0)
             self.history_index = len(self.history)
-            print(self.history, self.history_index)
             self.message = ""
             self.app.not_recording()
             self.enter_pressed = False
@@ -234,7 +257,6 @@ class Dispatch:
             self.message = self.history.pop(self.history_index)
         if self.history_index <= len(self.history) and self.temp:
             self.temp = False
-        print(self.history, self.history_index, self.temp)
 
     def on_down(self, key):
         if self.temp and self.history_index == len(self.history):
@@ -247,8 +269,6 @@ class Dispatch:
         else:
             self.message = ""
             self.temp = True
-
-        print(self.history, self.history_index, self.temp)
 
     def on_space(self, key):
         self.matchIndex = -1
@@ -293,7 +313,6 @@ def loop(dispatch):
 def read_settings():
     with open("config.json", "r") as f:
         config = json.load(f)
-        print(config)
     return config
 
 
