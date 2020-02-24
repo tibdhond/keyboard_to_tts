@@ -107,7 +107,7 @@ class Dispatch:
         self.shift_pressed = False
         self.commands = {"!tts": self.toggle_tts, "!lock": self.lock, "!unlock": self.unlock,
                          "!colour": self.font_colour, "!stop": self.stop, "!sound_device": self.detect_sd,
-                         "!quit": self.quit, "!exit": self.quit}
+                         "!quit": self.quit, "!exit": self.quit, "!reload": self.reload}
         self.options = sorted(self.commands.keys())
         self.options += sorted(os.listdir("./Soundboard"))
         self.matches = []       # autocomplete matches
@@ -168,6 +168,11 @@ class Dispatch:
 
     def stop(self):
         sd.stop()
+        return False
+
+    def reload(self):
+        self.options = sorted(self.commands.keys())
+        self.options += sorted(os.listdir("./Soundboard"))
         return False
 
     def quit(self):
