@@ -8,15 +8,17 @@ import re
 import threading as t
 import os
 import sys
+import json
 
 
 class App:
-    def __init__(self):
-        self.locked = False
-        self.x = 0
-        self.y = 0
+    def __init__(self, config):
+        self.locked = config["locked"]
+        self.x = config["x"]
+        self.y = config["y"]
         self.prev_mouse_x = 0
         self.prev_mouse_y = 0
+        self.font_color = config["font_color"]
 
         self.root = Tk()
 
@@ -29,6 +31,11 @@ class App:
         self.bMessage = Entry(self.frame, width=300, background="brown", fg="black")
         self.bMessage.config(font=("Courier", 14, 'bold'))
         self.bMessage.pack(pady=0)
+
+        try:
+            self.bMessage.config(fg=self.font_color)
+        except TclError:
+            print()
 
         self.root.overrideredirect(True)
         self.root.geometry("+%d+%d" % (self.x, self.y))
@@ -92,13 +99,12 @@ def read(f, normalized=False):
 
 
 class Dispatch:
-    def __init__(self):
+    def __init__(self, config):
         self.message = ""
         self.index = 0                  # Location of cursor
         self.enter_pressed = False      # Keep track of whether the program is recording
         self.shift_pressed = False
-        self.options = ["!tts", "!lock", "!unlock", "!white", "!b"
-                                                              "lack", "!yellow", "!blue", "!red", "!quit", "!exit",
+        self.options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit",
                         "!stop"]
         self.options += os.listdir("./Soundboard")
         self.matches = []       # autocomplete matches
@@ -106,8 +112,11 @@ class Dispatch:
         self.history = []       # Keep track of previous entries
         self.history_index = 0  # Index in history
         self.temp = False       # Keeps track of whether a temp entry is added to history
-        self.tts_enabled = False
-        self.app = App()
+        self.tts_enabled = config["tts_enabled"]
+        self.app = App(config)
+
+        self.sound_device = config["sound_device"]
+        sd.default.device = self.sound_device
 
         self.to_shift = {"&": 1, "é": 2, "\"": 3, "'": 4, "(": 5, "§": 6, "è": 7, "!": 8, "ç": 9, "à": 0, "-": "_",
                          ",": "?", ";": ".", ":": "/", "=": "+"}
@@ -139,6 +148,7 @@ class Dispatch:
                     elif c == "stop":
                         sd.stop()
                     elif c == "quit" or c == "exit":
+                        self.write_settings()
                         self.app.quit()
                         sys.exit()
                     else:
@@ -155,7 +165,6 @@ class Dispatch:
                         t2s.save("message.mp3")
                 if file != "":
                     sr, array = read(file, True)
-                    sd.default.device = 4
                     sd.play(array, sr)
             except AssertionError:
                 print()
@@ -268,6 +277,12 @@ class Dispatch:
         if self.enter_pressed:
             self.bottom_dispatch.get(key, self.on_non_special)(key)
 
+    def write_settings(self):
+        with open("config.json", "w") as f:
+            json.dump({"tts_enabled": self.tts_enabled, "locked": self.app.locked,
+                       "x": self.app.x, "y": self.app.y, "font_color": self.app.font_color,
+                       "sound_device": self.sound_device}, f)
+
 
 def loop(dispatch):
     with Listener(
@@ -275,8 +290,16 @@ def loop(dispatch):
         listener.join()
 
 
+def read_settings():
+    with open("config.json", "r") as f:
+        config = json.load(f)
+        print(config)
+    return config
+
+
 def main():
-    dispatch = Dispatch()
+    config = read_settings()
+    dispatch = Dispatch(config)
     capture = t.Thread(target=loop, args=[dispatch])
     capture.daemon = True
     capture.start()
