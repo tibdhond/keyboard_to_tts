@@ -12,7 +12,7 @@ import sys
 
 class App:
     def __init__(self):
-        self.locked = True
+        self.locked = False
         self.x = 0
         self.y = 0
         self.prev_mouse_x = 0
@@ -85,7 +85,6 @@ index = 0
 enter_pressed = False
 shift_pressed = False
 options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit", "!stop"]
-# options = [re.escape(x) for x in options]
 options += os.listdir("./Soundboard")
 matches = []
 history = []
