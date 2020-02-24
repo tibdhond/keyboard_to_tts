@@ -36,7 +36,7 @@ class App:
         try:
             self.bMessage.config(fg=self.font_color)
         except TclError:
-            print()
+            pass
 
         self.root.overrideredirect(True)
         self.root.geometry("+%d+%d" % (self.x, self.y))
@@ -81,7 +81,7 @@ class App:
         try:
             self.bMessage.config(fg=n_color)
         except TclError:
-            print()
+            pass
 
     def quit(self):
         self.root.destroy()
@@ -105,9 +105,11 @@ class Dispatch:
         self.index = 0                  # Location of cursor
         self.enter_pressed = False      # Keep track of whether the program is recording
         self.shift_pressed = False
-        self.options = ["!tts", "!lock", "!unlock", "!color ", "!quit", "!exit", "!sound_device",
-                        "!stop"]
-        self.options += os.listdir("./Soundboard")
+        self.commands = {"!tts": self.toggle_tts, "!lock": self.lock, "!unlock": self.unlock,
+                         "!colour": self.font_colour, "!stop": self.stop, "!sound_device": self.detect_sd,
+                         "!quit": self.quit, "!exit": self.quit}
+        self.options = sorted(self.commands.keys())
+        self.options += sorted(os.listdir("./Soundboard"))
         self.matches = []       # autocomplete matches
         self.matchIndex = -1
         self.history = []       # Keep track of previous entries
@@ -142,12 +144,36 @@ class Dispatch:
             self.index = len(self.message)
             self.app.message(self.message)
             self.app.cursor(self.index)
-            print(self.message)
             return True
         else:
             self.sound_device = i
             sd.default.device = i
             return False
+
+    def toggle_tts(self):
+        self.tts_enabled = not self.tts_enabled
+        return False
+
+    def lock(self):
+        self.app.lock(True)
+        return False
+
+    def unlock(self):
+        self.app.lock(False)
+        return False
+
+    def font_colour(self, args):
+        self.app.color(args[0])
+        return False
+
+    def stop(self):
+        sd.stop()
+        return False
+
+    def quit(self):
+        self.write_settings()
+        self.app.quit()
+        sys.exit()
 
     def on_press(self, key):
         self.top_dispatch.get(key, self.on_any)(key)
@@ -160,24 +186,16 @@ class Dispatch:
             try:
                 file = ""
                 if len(self.message) > 0 and self.message[0] == '!':  # Indicates command
-                    c = self.message[1:].lower()
-                    if c == "tts":
-                        self.tts_enabled = not self.tts_enabled
-                    elif c == "lock":
-                        self.app.lock(True)
-                    elif c == "unlock":
-                        self.app.lock(False)
-                    elif c == "stop":
-                        sd.stop()
-                    elif c == "quit" or c == "exit":
-                        self.write_settings()
-                        self.app.quit()
-                        sys.exit()
-                    elif c == "sound_device":
-                        if self.detect_sd():
+                    c = self.message.lower().split(" ")
+                    if len(c) == 1:
+                        if self.commands[c[0]]():
                             return
-                    elif re.match("color .*", c):
-                        self.app.color(c[6:])
+                    else:
+                        try:
+                            if self.commands[c[0]](c[1:]):
+                                return
+                        except TypeError:
+                            pass
                 elif self.message[-4:] == ".mp3":
                     file = "Soundboard/{0}".format(self.message)
                 else:
@@ -192,9 +210,9 @@ class Dispatch:
                     sr, array = read(file, True)
                     sd.play(array, sr)
             except AssertionError:
-                print()
+                pass
             except FileNotFoundError:
-                print()
+                pass
 
             self.index = 0
             self.matchIndex = -1
