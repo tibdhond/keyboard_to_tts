@@ -56,14 +56,13 @@ class App:
     def not_recording(self):
         self.frame.config(background='white')
 
-    def message(self):
+    def message(self, message):
         self.bMessage.focus_set()
         self.root.wm_attributes("-topmost", True)
         self.bMessage.delete(0, END)
         self.bMessage.insert(0, message[-26:])
 
-    def cursor(self):
-        global index
+    def cursor(self, index):
         self.bMessage.focus_set()
         self.bMessage.icursor(index)
 
@@ -80,23 +79,6 @@ class App:
         self.root.destroy()
 
 
-message = ""
-index = 0
-enter_pressed = False
-shift_pressed = False
-options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit", "!stop"]
-options += os.listdir("./Soundboard")
-matches = []
-history = []
-history_index = 0
-matchIndex = -1
-tts_enabled = False
-app = App()
-
-to_shift = {"&": 1, "é": 2, "\"": 3, "'": 4, "(": 5, "§": 6, "è": 7, "!": 8, "ç": 9, "à": 0, "-": "_",
-            ",": "?", ";": ".", ":": "/", "=": "+"}
-
-
 def read(f, normalized=False):
     """MP3 to numpy array"""
     a = pydub.AudioSegment.from_mp3(f)
@@ -109,141 +91,156 @@ def read(f, normalized=False):
         return a.frame_rate, y
 
 
-def on_press(key):
-    global message
-    global enter_pressed
-    global shift_pressed
-    global index
-    global app
-    global matches
-    global matchIndex
-    global tts_enabled
-    global options
-    global history_index
-    global history
-    if key == Key.enter:
-        if enter_pressed:
-            try:
-                file = ""
-                if len(message) > 0 and message[0] == '!':  # Indicates command
-                    c = message[1:].lower()
-                    if c == "tts":
-                        tts_enabled = not tts_enabled
-                    elif c == "lock":
-                        app.lock(True)
-                    elif c == "unlock":
-                        app.lock(False)
-                    elif c == "stop":
-                        sd.stop()
-                    elif c == "quit" or c == "exit":
-                        app.quit()
-                        sys.exit()
+class Dispatch:
+    def __init__(self):
+        self.message = ""
+        self.index = 0
+        self.enter_pressed = False
+        self.shift_pressed = False
+        self.options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit",
+                        "!stop"]
+        self.options += os.listdir("./Soundboard")
+        self.matches = []
+        self.history = []
+        self.history_index = 0
+        self.matchIndex = -1
+        self.tts_enabled = False
+        self.app = App()
+
+        self.to_shift = {"&": 1, "é": 2, "\"": 3, "'": 4, "(": 5, "§": 6, "è": 7, "!": 8, "ç": 9, "à": 0, "-": "_",
+                         ",": "?", ";": ".", ":": "/", "=": "+"}
+
+    def on_press(self, key):
+        if key == Key.enter:
+            if self.enter_pressed:
+                try:
+                    file = ""
+                    if len(self.message) > 0 and self.message[0] == '!':  # Indicates command
+                        c = self.message[1:].lower()
+                        if c == "tts":
+                            self.tts_enabled = not self.tts_enabled
+                        elif c == "lock":
+                            self.app.lock(True)
+                        elif c == "unlock":
+                            self.app.lock(False)
+                        elif c == "stop":
+                            sd.stop()
+                        elif c == "quit" or c == "exit":
+                            self.app.quit()
+                            sys.exit()
+                        else:
+                            self.app.color(c)
+                    elif self.message[-4:] == ".mp3":
+                        file = "Soundboard/{0}".format(self.message)
                     else:
-                        app.color(c)
-                elif message[-4:] == ".mp3":
-                    file = "Soundboard/{0}".format(message)
+                        if self.tts_enabled:
+                            file = "message.mp3"
+                            self.message = re.sub("([a-zA-Z]{2,3})[cC][cC] ", r'\1ck', self.message)
+                            self.message = re.sub("([a-zA-Z]{2,3})[cC][cC]$", r'\1ck', self.message)
+                            self.message.replace("wtf", "what the fuck")
+                            t2s = gTTS(text=self.message, lang='en-US')
+                            t2s.save("message.mp3")
+                    if file != "":
+                        sr, array = read(file, True)
+                        sd.default.device = 4
+                        sd.play(array, sr)
+                except AssertionError:
+                    print()
+                except FileNotFoundError:
+                    print()
+
+                self.index = 0
+                self.matchIndex = -1
+                if self.history_index != len(self.history):
+                    self.history.pop()
+                if self.message != "" and (len(self.history) == 0 or self.history[-1] != self.message):
+                    self.history.append(self.message)
+                if len(self.history) > 20:  # History size
+                    self.history.pop(0)
+                self.history_index = len(self.history)
+                self.message = ""
+                self.app.not_recording()
+                self.enter_pressed = False
+            else:
+                self.app.recording()
+                self.enter_pressed = True
+        elif key == Key.esc:
+            self.app.not_recording()
+            self.enter_pressed = False
+        elif self.enter_pressed:
+            if key == Key.backspace:
+                self.matchIndex = -1
+                if self.index > 0:
+                    self.message = self.message[:self.index - 1] + self.message[self.index:]
+                    self.index -= 1
+            elif key == Key.delete:
+                self.matchIndex = -1
+                if self.index < len(self.message):
+                    self.message = self.message[:self.index] + self.message[self.index + 1:]
+            elif key == Key.shift:
+                self.shift_pressed = True
+            elif key == Key.tab:
+                if self.matchIndex == -1:
+                    self.matches = list(filter(lambda x: re.match(re.escape(self.message[:self.index]),
+                                                                  x, re.IGNORECASE), self.options))
+                if len(self.matches) > 0:
+                    self.matchIndex = (self.matchIndex + 1) % len(self.matches)
+                    self.message = self.matches[self.matchIndex]
+                    self.index = len(self.message)
+            elif key == Key.left:
+                self.index = max(self.index - 1, 0)
+            elif key == Key.right:
+                self.index = min(self.index + 1, len(self.message))
+            elif key == Key.up and self.history_index > 0:
+                if self.message != "":
+                    self.history.insert(self.history_index, self.message)
+                self.history_index = max(0, self.history_index - 1)
+                self.message = self.history.pop(self.history_index)
+            elif key == Key.down:
+                if self.message != "":
+                    self.history.insert(self.history_index, self.message)
+                self.history_index = min(self.history_index + 1, len(self.history))
+                if self.history_index < len(self.history):
+                    self.message = self.history.pop(self.history_index)
                 else:
-                    if tts_enabled:
-                        file = "message.mp3"
-                        message = re.sub("([a-zA-Z]{2,3})[cC][cC] ", r'\1ck', message)
-                        message = re.sub("([a-zA-Z]{2,3})[cC][cC]$", r'\1ck', message)
-                        message.replace("wtf", "what the fuck")
-                        t2s = gTTS(text=message, lang='en-US')
-                        t2s.save("message.mp3")
-                if file != "":
-                    sr, array = read(file, True)
-                    sd.default.device = 4
-                    sd.play(array, sr)
-            except AssertionError:
-                print()
-            except FileNotFoundError:
-                print()
-
-            index = 0
-            matchIndex = -1
-            if history_index != len(history):
-                history.pop()
-            if message != "" and (len(history) == 0 or history[-1] != message):
-                history.append(message)
-            if len(history) > 20:   # History size
-                history.pop(0)
-            history_index = len(history)
-            message = ""
-            app.not_recording()
-            enter_pressed = False
-        else:
-            app.recording()
-            enter_pressed = True
-    elif key == Key.esc:
-        app.not_recording()
-        enter_pressed = False
-    elif enter_pressed:
-        if key == Key.backspace:
-            matchIndex = -1
-            if index > 0:
-                message = message[:index-1] + message[index:]
-                index -= 1
-        elif key == Key.delete:
-            matchIndex = -1
-            if index < len(message):
-                message = message[:index] + message[index+1:]
-        elif key == Key.shift:
-            shift_pressed = True
-        elif key == Key.tab:
-            if matchIndex == -1:
-                matches = list(filter(lambda x: re.match(re.escape(message[:index]), x, re.IGNORECASE), options))
-            if len(matches) > 0:
-                matchIndex = (matchIndex + 1) % len(matches)
-                message = matches[matchIndex]
-                index = len(message)
-        elif key == Key.left:
-            index = max(index-1, 0)
-        elif key == Key.right:
-            index = min(index+1, len(message))
-        elif key == Key.up and history_index > 0:
-            if message != "":
-                history.insert(history_index, message)
-            history_index = max(0, history_index-1)
-            message = history.pop(history_index)
-        elif key == Key.down:
-            if message != "":
-                history.insert(history_index, message)
-            history_index = min(history_index+1, len(history))
-            if history_index < len(history):
-                message = history.pop(history_index)
+                    self.message = ""
             else:
-                message = ""
-        else:
-            if key == Key.space:
-                matchIndex = -1
-                message += ' '
-                index += 1
-            else:
-                matchIndex = -1
-                key = str(key)
-                if key.count('"') > 1:
-                    key = key.replace('"', '')
-                elif key.count("'") > 1:
-                    key = key.replace("'", "")
-                if len(key) == 1:
-                    if shift_pressed:
-                        key = str(to_shift.get(key, key.upper()))
-                        shift_pressed = False
-                    message = message[:index] + key + message[index:]
-                    index = index + 1
+                if key == Key.space:
+                    self.matchIndex = -1
+                    self.message += ' '
+                    self.index += 1
+                else:
+                    self.matchIndex = -1
+                    key = str(key)
+                    if key.count('"') > 1:
+                        key = key.replace('"', '')
+                    elif key.count("'") > 1:
+                        key = key.replace("'", "")
+                    if len(key) == 1:
+                        if self.shift_pressed:
+                            key = str(self.to_shift.get(key, key.upper()))
+                            self.shift_pressed = False
+                        self.message = self.message[:self.index] + key + self.message[self.index:]
+                        self.index = self.index + 1
 
-    app.message()
-    app.cursor()
+        self.app.message(self.message)
+        self.app.cursor(self.index)
 
 
-def loop():
+def loop(dispatch):
     with Listener(
-            on_press=on_press) as listener:
+            on_press=dispatch.on_press) as listener:
         listener.join()
 
 
-capture = t.Thread(target=loop)
-capture.daemon = True
-capture.start()
-app.root.mainloop()
-sys.exit()
+def main():
+    dispatch = Dispatch()
+    capture = t.Thread(target=loop, args=[dispatch])
+    capture.daemon = True
+    capture.start()
+    dispatch.app.root.mainloop()
+    sys.exit()
+
+
+if __name__ == '__main__':
+    main()
