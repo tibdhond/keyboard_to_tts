@@ -104,7 +104,7 @@ class Dispatch:
         self.index = 0                  # Location of cursor
         self.enter_pressed = False      # Keep track of whether the program is recording
         self.shift_pressed = False
-        self.options = ["!tts", "!lock", "!unlock", "!white", "!black", "!yellow", "!blue", "!red", "!quit", "!exit",
+        self.options = ["!tts", "!lock", "!unlock", "!color ", "!quit", "!exit",
                         "!stop"]
         self.options += os.listdir("./Soundboard")
         self.matches = []       # autocomplete matches
@@ -151,8 +151,8 @@ class Dispatch:
                         self.write_settings()
                         self.app.quit()
                         sys.exit()
-                    else:
-                        self.app.color(c)
+                    elif re.match("color .*", c):
+                        self.app.color(c[6:])
                 elif self.message[-4:] == ".mp3":
                     file = "Soundboard/{0}".format(self.message)
                 else:
