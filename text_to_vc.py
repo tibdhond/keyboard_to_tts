@@ -177,7 +177,7 @@ class Dispatch:
 
     def reload(self):
         self.options = sorted(self.commands.keys())
-        self.options += sorted(os.listdir(self.curr_dir))
+        self.options += [x for x in sorted(os.listdir("./Soundboard/"))]
         return False
 
     def quit(self):
@@ -238,6 +238,7 @@ class Dispatch:
             self.history_index = len(self.history)
             self.message = ""
             self.curr_dir = ""
+            self.reload()
             self.app.not_recording()
             self.enter_pressed = False
         else:
