@@ -19,6 +19,8 @@ class App:
         self.prev_mouse_x = 0
         self.prev_mouse_y = 0
         self.font_color = config["font_color"]
+        self.window_start = 0
+        self.window_length = 25
 
         self.root = Tk()
 
@@ -63,11 +65,13 @@ class App:
     def not_recording(self):
         self.frame.config(background='white')
 
-    def message(self, message):
+    def message(self, message, index):
         self.bMessage.focus_set()
         self.root.wm_attributes("-topmost", True)
         self.bMessage.delete(0, END)
-        self.bMessage.insert(0, message[-26:])
+        start = max(0, min(index, len(message)-self.window_length))
+        self.bMessage.insert(0, message[start:start+self.window_length])
+        self.cursor(index-start)
 
     def cursor(self, index):
         self.bMessage.focus_set()
@@ -86,7 +90,7 @@ class App:
         self.root.destroy()
 
 
-def read(f, normalized=False):
+def read(f, normalized=True):
     """MP3 to numpy array"""
     a = pydub.AudioSegment.from_mp3(f)
     y = np.array(a.get_array_of_samples())
@@ -116,6 +120,8 @@ class Dispatch:
         self.temp = False       # Keeps track of whether a temp entry is added to history
         self.tts_enabled = config["tts_enabled"]
         self.app = App(config)
+
+        self.curr_dir = ''
 
         self.sound_device = config["sound_device"]
         if self.sound_device == -1:
@@ -171,7 +177,7 @@ class Dispatch:
 
     def reload(self):
         self.options = sorted(self.commands.keys())
-        self.options += sorted(os.listdir("./Soundboard"))
+        self.options += sorted(os.listdir(self.curr_dir))
         return False
 
     def quit(self):
@@ -182,25 +188,28 @@ class Dispatch:
     def on_press(self, key):
         self.top_dispatch.get(key, self.on_any)(key)
 
-        self.app.message(self.message)
-        self.app.cursor(self.index)
+        self.app.message(self.message, self.index)
+        # self.app.cursor(self.index)
 
     def on_enter(self, key):
         if self.enter_pressed:
             try:
                 file = ""
                 if len(self.message) > 0 and self.message[0] == '!':  # Indicates command
-                    c = self.message.lower().split(" ")
-                    if len(c) == 1:
-                        if self.commands[c[0]]():
-                            return
-                    else:
-                        try:
-                            if self.commands[c[0]](c[1:]):
+                    try:
+                        c = self.message.lower().split(" ")
+                        if len(c) == 1:
+                            if self.commands[c[0]]():
                                 return
-                        except TypeError:
-                            pass
-                elif self.message[-4:] == ".mp3":
+                        else:
+                            try:
+                                if self.commands[c[0]](c[1:]):
+                                    return
+                            except TypeError:
+                                pass
+                    except KeyError:
+                        pass
+                elif self.message[-4:] == ".mp3" or self.message[-4:] == ".wav":
                     file = "Soundboard/{0}".format(self.message)
                 else:
                     if self.tts_enabled:
@@ -228,6 +237,7 @@ class Dispatch:
                 self.history.pop(0)
             self.history_index = len(self.history)
             self.message = ""
+            self.curr_dir = ""
             self.app.not_recording()
             self.enter_pressed = False
         else:
@@ -241,18 +251,31 @@ class Dispatch:
     def on_backspace(self, key):
         self.matchIndex = -1
         if self.index > 0:
+            if self.message[self.index-1] == '/':
+                # find first '/' before deleted char and refresh option list
+                self.curr_dir = self.message[:self.message[:self.index-1].rfind('/')]
+                if os.path.exists("./Soundboard/%s" % self.curr_dir):
+                    self.options = ["%s/%s" % (self.curr_dir, x)
+                                    for x in sorted(os.listdir("./Soundboard/%s" % self.curr_dir))]
             self.message = self.message[:self.index - 1] + self.message[self.index:]
             self.index -= 1
 
     def on_delete(self, key):
         self.matchIndex = -1
         if self.index < len(self.message):
+            if self.message[self.index] == '/':
+                # find first '/' before deleted char and refresh option list
+                self.curr_dir = self.message[:self.message[:self.index].rfind('/')]
+                if os.path.exists("./Soundboard/%s" % self.curr_dir):
+                    self.options = ["%s/%s" % (self.curr_dir, x)
+                                    for x in sorted(os.listdir("./Soundboard/%s" % self.curr_dir))]
             self.message = self.message[:self.index] + self.message[self.index + 1:]
 
     def on_shift(self, key):
         self.shift_pressed = True
 
     def on_tab(self, key):
+        print(self.options)
         if self.temp:
             self.history.pop()
             self.temp = False
@@ -312,6 +335,12 @@ class Dispatch:
             if self.shift_pressed:
                 key = str(self.to_shift.get(key, key.upper()))
                 self.shift_pressed = False
+            if key == "/":
+                self.curr_dir = self.message
+                if os.path.exists("./Soundboard/%s" % self.curr_dir):
+                    self.options = ["%s/%s" % (self.curr_dir, x)
+                                    for x in sorted(os.listdir("./Soundboard/%s" % self.curr_dir))]
+                print(self.curr_dir, self.message)
             self.message = self.message[:self.index] + key + self.message[self.index:]
             self.index = self.index + 1
 
